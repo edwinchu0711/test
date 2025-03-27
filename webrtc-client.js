@@ -1,7 +1,9 @@
 const localVideo = document.getElementById('localVideo');
 const remoteVideo = document.getElementById('remoteVideo');
+const joinRoomButton = document.getElementById('joinRoom');
 const startCallButton = document.getElementById('startCall');
 const endCallButton = document.getElementById('endCall');
+const roomInput = document.getElementById('roomInput');
 
 const peerConnection = new RTCPeerConnection({
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
@@ -32,12 +34,6 @@ peerConnection.ontrack = event => {
 // Signaling logic (using WebSocket)
 const signalingSocket = new WebSocket('wss://superficial-obsidian-harp.glitch.me');
 
-signalingSocket.onopen = () => {
-  roomName = prompt('Enter room name:'); // Ask user for room name
-  signalingSocket.send(JSON.stringify({ type: 'join', room: roomName }));
-  console.log(`Joined room: ${roomName}`);
-};
-
 signalingSocket.onmessage = async message => {
   const data = JSON.parse(message.data);
 
@@ -57,6 +53,20 @@ peerConnection.onicecandidate = event => {
   if (event.candidate) {
     signalingSocket.send(JSON.stringify({ type: 'candidate', candidate: event.candidate, room: roomName }));
   }
+};
+
+// Join room
+joinRoomButton.onclick = () => {
+  roomName = roomInput.value.trim();
+  if (!roomName) {
+    alert('Please enter a room name.');
+    return;
+  }
+  signalingSocket.send(JSON.stringify({ type: 'join', room: roomName }));
+  console.log(`Joined room: ${roomName}`);
+  joinRoomButton.disabled = true;
+  roomInput.disabled = true;
+  startCallButton.disabled = false;
 };
 
 // Start call
