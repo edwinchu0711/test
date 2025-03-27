@@ -12,6 +12,11 @@ const peerConnection = new RTCPeerConnection({
 let localStream;
 let roomName = null;
 
+// Disable buttons initially
+joinRoomButton.disabled = true;
+startCallButton.disabled = true;
+endCallButton.disabled = true;
+
 // Get user media (camera and microphone)
 navigator.mediaDevices.getUserMedia({ video: true, audio: true })
   .then(stream => {
@@ -25,20 +30,21 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
     alert('Could not access camera and microphone.');
   });
 
-// Handle incoming remote stream
-peerConnection.ontrack = event => {
-  if (!remoteVideo.srcObject) {
-    remoteVideo.srcObject = event.streams[0];
-    console.log('Remote stream added');
-  }
-};
-
-// Signaling logic (using WebSocket)
+// WebSocket setup
 const signalingSocket = new WebSocket('wss://aluminum-tremendous-archaeology.glitch.me/');
-
 
 signalingSocket.onopen = () => {
   console.log('WebSocket connection established');
+  joinRoomButton.disabled = false; // Enable join button when WebSocket is ready
+};
+
+signalingSocket.onerror = error => {
+  console.error('WebSocket error:', error);
+};
+
+signalingSocket.onclose = () => {
+  console.log('WebSocket connection closed');
+  alert('WebSocket connection lost. Please refresh the page.');
 };
 
 signalingSocket.onmessage = async message => {
@@ -59,6 +65,7 @@ signalingSocket.onmessage = async message => {
     await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
   }
 };
+
 peerConnection.onicecandidate = event => {
   if (event.candidate) {
     console.log('Sending ICE candidate');
@@ -70,10 +77,18 @@ peerConnection.onicecandidate = event => {
 joinRoomButton.onclick = () => {
   console.log('Join Room button clicked');
   roomName = roomInput.value.trim();
+
   if (!roomName) {
     alert('Please enter a room name.');
     return;
   }
+
+  if (signalingSocket.readyState !== WebSocket.OPEN) {
+    alert('WebSocket is not connected yet. Please wait.');
+    console.error('WebSocket is not ready. Current state:', signalingSocket.readyState);
+    return;
+  }
+
   signalingSocket.send(JSON.stringify({ type: 'join', room: roomName }));
   console.log(`Joined room: ${roomName}`);
   joinRoomButton.disabled = true;
