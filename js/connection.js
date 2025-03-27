@@ -146,9 +146,12 @@ class ConnectionManager {
         }
       }
       
-      // 新增處理消息的方法，保留原有的業務邏輯
       processSignalingMessage(message) {
         switch (message.type) {
+          case 'join-room':
+            this.handleJoinRoom(message.roomId, message.userId, message.displayName, message.supportWebTransport);
+            break;
+            
           case 'user-joined':
             this.handleUserJoined(message.userId, message.displayName);
             break;
@@ -177,6 +180,26 @@ class ConnectionManager {
             console.warn('收到未知類型的信令消息:', message);
         }
       }
+      
+      // 新增處理加入房間的方法
+      handleJoinRoom(roomId, userId, displayName, supportWebTransport) {
+        console.log(`用戶 ${displayName} (${userId}) 請求加入房間 ${roomId}`);
+        
+        // 加入房間的邏輯
+        this.currentRoomId = roomId;
+        
+        // 如果支持 WebTransport，可以進行相關設置
+        if (supportWebTransport) {
+          this.initializeWebTransport();
+        }
+        
+        // 通知其他用戶有新用戶加入
+        this.broadcastUserJoined(userId, displayName);
+        
+        // 向新用戶發送房間內現有用戶的信息
+        this.sendExistingParticipants(userId);
+      }
+      
     
     /**
      * 發送信令消息
