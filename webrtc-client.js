@@ -5,9 +5,43 @@ const startCallButton = document.getElementById('startCall');
 const endCallButton = document.getElementById('endCall');
 const roomInput = document.getElementById('roomInput');
 
+// const peerConnection = new RTCPeerConnection({
+//   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+// });
+
+
+const socket = io("https://aluminum-tremendous-archaeology.glitch.me");
+
+// 設定 STUN & TURN 伺服器
 const peerConnection = new RTCPeerConnection({
-  iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        {
+            urls: "turn:turn.anyfirewall.com:443?transport=tcp",
+            username: "webrtc",
+            credential: "webrtc"
+        }
+    ]
 });
+
+// 當有 ICE 候選時，發送給對方
+peerConnection.onicecandidate = (event) => {
+    if (event.candidate) {
+        socket.emit("iceCandidate", event.candidate);
+    }
+};
+
+// 接收 ICE 候選並加入
+socket.on("iceCandidate", (candidate) => {
+    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+});
+
+// 當有遠端流時，顯示到 video
+peerConnection.ontrack = (event) => {
+    document.getElementById("remoteVideo").srcObject = event.streams[0];
+};
+
+
 
 let localStream;
 let roomName = null;
