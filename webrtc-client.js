@@ -17,6 +17,13 @@ const peerConnection = new RTCPeerConnection({
         { urls: "stun:stun2.l.google.com:19302" },
         { urls: "stun:stun3.l.google.com:19302" },
         { urls: "stun:stun4.l.google.com:19302" },
+        { urls: "stun:stun.stunprotocol.org:3478" },
+        { urls: "stun:stun.sipgate.net:3478" },
+        { urls: "stun:stun.ekiga.net:3478" },
+        { urls: "stun:stun.ideasip.com:3478" },
+        { urls: "stun:stun.voiparound.com:3478" }
+    ],
+    
         
         
         // TURN 伺服器選項
@@ -67,7 +74,7 @@ const peerConnection = new RTCPeerConnection({
             username: 'webrtc'
         }
     ],
-    iceCandidatePoolSize: 10
+    iceCandidatePoolSize: 20
 });
 
 let localStream;
