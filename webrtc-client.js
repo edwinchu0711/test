@@ -34,7 +34,8 @@ peerConnection.ontrack = event => {
 };
 
 // Signaling logic (using WebSocket)
-const signalingSocket = new WebSocket('ws://aluminum-tremendous-archaeology.glitch.me');
+const signalingSocket = new WebSocket('wss://aluminum-tremendous-archaeology.glitch.me/');
+
 
 signalingSocket.onopen = () => {
   console.log('WebSocket connection established');
@@ -58,7 +59,6 @@ signalingSocket.onmessage = async message => {
     await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
   }
 };
-
 peerConnection.onicecandidate = event => {
   if (event.candidate) {
     console.log('Sending ICE candidate');
