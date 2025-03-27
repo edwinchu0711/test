@@ -47,18 +47,30 @@ signalingSocket.onclose = () => {
   alert('WebSocket connection lost. Please refresh the page.');
 };
 
+
+
+
 signalingSocket.onmessage = async message => {
-  if (message.data instanceof Blob) {
-    // 轉換 Blob 為文字
-    const text = await message.data.text();
-    message.data = text; // 更新 message.data，這樣後續 JSON.parse() 才不會報錯
-  }
+  console.log('Received raw message:', message.data); // 先確認 message.data 的內容
 
-  console.log('Received message:', message.data);
-  
   try {
-    const data = JSON.parse(message.data);
+    let data;
 
+    // 如果 message.data 是 Blob，先轉換為文字
+    if (message.data instanceof Blob) {
+      const text = await message.data.text(); // 轉換 Blob -> 文字
+      console.log('Converted Blob to text:', text); // 確保轉換成功
+      data = JSON.parse(text);
+    } else if (typeof message.data === 'string') {
+      data = JSON.parse(message.data);
+    } else {
+      console.error('Unexpected WebSocket message format:', message.data);
+      return;
+    }
+
+    console.log('Parsed WebSocket message:', data);
+
+    // 繼續處理 WebRTC 訊息
     if (data.type === 'offer') {
       console.log('Received offer');
       await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
@@ -76,6 +88,9 @@ signalingSocket.onmessage = async message => {
     console.error('Failed to parse WebSocket message:', error);
   }
 };
+
+
+
 
 peerConnection.onicecandidate = event => {
   if (event.candidate) {
