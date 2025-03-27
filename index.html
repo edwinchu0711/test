@@ -21,7 +21,7 @@
     #controls {
       margin: 20px 0;
     }
-    button {
+    button, input {
       padding: 10px 20px;
       font-size: 16px;
       margin: 5px;
@@ -37,6 +37,11 @@
       background-color: #f44336;
       color: white;
     }
+    input#roomInput {
+      width: 200px;
+      font-size: 16px;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -46,7 +51,9 @@
     <video id="remoteVideo" autoplay playsinline></video>
   </div>
   <div id="controls">
-    <button id="startCall">Start Call</button>
+    <input type="text" id="roomInput" placeholder="Enter Room Name">
+    <button id="joinRoom">Join Room</button>
+    <button id="startCall" disabled>Start Call</button>
     <button id="endCall" disabled>End Call</button>
   </div>
   <script src="webrtc-client.js"></script>
