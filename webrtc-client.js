@@ -3,6 +3,7 @@ const remoteVideo = document.getElementById('remoteVideo');
 const startCallButton = document.getElementById('startCall');
 const endCallButton = document.getElementById('endCall');
 
+
 const peerConnection = new RTCPeerConnection({
   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 });
@@ -23,7 +24,8 @@ peerConnection.ontrack = event => {
 };
 
 // Signaling logic (using WebSocket)
-const signalingSocket = new WebSocket('ws://your-signaling-server.com');
+const signalingSocket = new WebSocket('wss://superficial-obsidian-harp.glitch.me');
+
 
 signalingSocket.onmessage = async message => {
   const data = JSON.parse(message.data);
