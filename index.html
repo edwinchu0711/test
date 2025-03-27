@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WebRTC Video Chat</title>
-<!--   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script> -->
+  <title>WebRTC 視訊通話</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
   <style>
     body {
@@ -14,11 +15,24 @@
       padding: 0;
       background-color: #f4f4f9;
     }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .video-container {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 20px 0;
+    }
     video {
       width: 45%;
+      max-width: 500px;
       margin: 10px;
       border-radius: 8px;
       border: 2px solid #ddd;
+      background-color: #222;
     }
     #controls {
       margin: 20px 0;
@@ -30,63 +44,63 @@
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    button#joinRoom {
+      background-color: #2196F3;
+      color: white;
     }
     button#startCall {
       background-color: #4CAF50;
       color: white;
-      cursor: not-allowed;
     }
     button#endCall {
       background-color: #f44336;
       color: white;
-      cursor: not-allowed;
     }
     input#roomInput {
       width: 200px;
       font-size: 16px;
       text-align: center;
+      border: 1px solid #ddd;
+    }
+    .status {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 5px;
+      background-color: #e8f5e9;
+    }
+    .error {
+      background-color: #ffebee;
+      color: #c62828;
     }
   </style>
 </head>
 <body>
-  <h1>WebRTC Video Chat</h1>
-  <div>
-    <video id="localVideo" autoplay muted playsinline></video>
-    <video id="remoteVideo" autoplay playsinline></video>
+  <div class="container">
+    <h1>WebRTC 視訊通話</h1>
+    
+    <div class="status" id="connectionStatus">連線狀態: 等待連接...</div>
+    
+    <div class="video-container">
+      <video id="localVideo" autoplay muted playsinline></video>
+      <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+    
+    <div id="controls">
+      <input type="text" id="roomInput" placeholder="輸入房間名稱">
+      <button id="joinRoom">加入房間</button>
+      <button id="startCall" disabled>開始通話</button>
+      <button id="endCall" disabled>結束通話</button>
+    </div>
+    
+    <div id="iceStatus" class="status"></div>
   </div>
-  <div id="controls">
-    <input type="text" id="roomInput" placeholder="Enter Room Name">
-    <button id="joinRoom">Join Room</button>
-    <button id="startCall" disabled>Start Call</button>
-    <button id="endCall" disabled>End Call</button>
-  </div>
-  
-  <script>
-    document.getElementById('joinRoom').addEventListener('click', () => {
-      const roomName = document.getElementById('roomInput').value.trim();
-      if (roomName === '') {
-        alert('Please enter a room name');
-        return;
-      }
-      document.getElementById('startCall').disabled = false;
-      document.getElementById('startCall').style.cursor = 'pointer';
-    });
 
-    document.getElementById('startCall').addEventListener('click', () => {
-      document.getElementById('endCall').disabled = false;
-      document.getElementById('endCall').style.cursor = 'pointer';
-    });
-
-    document.getElementById('endCall').addEventListener('click', () => {
-      document.getElementById('endCall').disabled = true;
-      document.getElementById('endCall').style.cursor = 'not-allowed';
-    });
-  </script>
-
-  <script type="module" src="webrtc-client.js"></script>
-<!--   <script>
-    const socket = io("https://aluminum-tremendous-archaeology.glitch.me");
-</script>
- -->
+  <script src="webrtc-client.js"></script>
 </body>
 </html>
