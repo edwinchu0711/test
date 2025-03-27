@@ -41,6 +41,7 @@ socket.on("iceCandidate", (candidate) => {
 // 當有遠端流時，顯示到 video
 peerConnection.ontrack = (event) => {
     document.getElementById("remoteVideo").srcObject = event.streams[0];
+    console.log("收到影片了!!!!")
 };
 
 
