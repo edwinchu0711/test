@@ -11,7 +11,7 @@ const connectionStatus = document.getElementById('connectionStatus');
 // 設定 STUN & TURN 伺服器 (增加多個選項提高連線成功率)
 const peerConnection = new RTCPeerConnection({
     iceServers: [
-        // Google 的公共 STUN 伺服器
+        // STUN 伺服器
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
         { urls: "stun:stun2.l.google.com:19302" },
@@ -21,17 +21,9 @@ const peerConnection = new RTCPeerConnection({
         { urls: "stun:stun.sipgate.net:3478" },
         { urls: "stun:stun.ekiga.net:3478" },
         { urls: "stun:stun.ideasip.com:3478" },
-        { urls: "stun:stun.voiparound.com:3478" }
-    ],
-    
-        
-        
-        // TURN 伺服器選項
-        {
-            urls: "turn:turn.anyfirewall.com:443?transport=tcp",
-            username: "webrtc",
-            credential: "webrtc"
-        },
+        { urls: "stun:stun.voiparound.com:3478" },
+
+        // TURN 伺服器
         {
             urls: "turn:openrelay.metered.ca:80",
             username: "openrelayproject",
@@ -47,35 +39,15 @@ const peerConnection = new RTCPeerConnection({
             username: "openrelayproject",
             credential: "openrelayproject"
         },
-        
         {
-            url: 'turn:numb.viagenie.ca',
-            credential: 'muazkh',
-            username: 'webrtc@live.com'
-        },
-        {
-            url: 'turn:192.158.29.39:3478?transport=udp',
-            credential: 'JZEOEt2V3Qb0y27GRntt2u2PAYA=',
-            username: '28224511:1379330808'
-        },
-        {
-            url: 'turn:192.158.29.39:3478?transport=tcp',
-            credential: 'JZEOEt2V3Qb0y27GRntt2u2PAYA=',
-            username: '28224511:1379330808'
-        },
-        {
-            url: 'turn:turn.bistri.com:80',
-            credential: 'homeo',
-            username: 'homeo'
-         },
-         {
-            url: 'turn:turn.anyfirewall.com:443?transport=tcp',
-            credential: 'webrtc',
-            username: 'webrtc'
+            urls: "turn:turn.bistri.com:80",
+            username: "homeo",
+            credential: "homeo"
         }
     ],
     iceCandidatePoolSize: 20
 });
+
 
 let localStream;
 let roomName = null;
