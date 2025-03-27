@@ -142,3 +142,22 @@ endCallButton.onclick = () => {
   remoteVideo.srcObject = null;
   alert('Call ended.');
 };
+
+
+peerConnection.ontrack = function(event) {
+    console.log("收到視訊流", event.streams[0]);
+    const remoteVideo = document.getElementById("remoteVideo");
+    if (remoteVideo) {
+        remoteVideo.srcObject = event.streams[0];
+    }
+};
+localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+    .then(stream => {
+        document.getElementById("localVideo").srcObject = stream;
+        stream.getTracks().forEach(track => peerConnection.addTrack(track, stream));
+    })
+    .catch(error => console.error("無法獲取視訊", error));
+peerConnection.setRemoteDescription(new RTCSessionDescription(offer))
+    .then(() => console.log("成功設置遠端描述"))
+    .catch(error => console.error("設定遠端描述失敗", error));
