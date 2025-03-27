@@ -5,351 +5,359 @@ const joinRoomButton = document.getElementById('joinRoom');
 const startCallButton = document.getElementById('startCall');
 const endCallButton = document.getElementById('endCall');
 const roomInput = document.getElementById('roomInput');
+const statusDiv = document.getElementById('status');
 const connectionStatus = document.getElementById('connectionStatus');
-const iceStatus = document.getElementById('iceStatus');
 
-// Firebase 配置
-const firebaseConfig = {
-  apiKey: "AIzaSyBxC9R5PoRBxh8mR8gWkP0qLB7MHVVs4_A",
-  authDomain: "webrtc-signaling-demo.firebaseapp.com",
-  databaseURL: "https://webrtc-signaling-demo-default-rtdb.firebaseio.com",
-  projectId: "webrtc-signaling-demo",
-  storageBucket: "webrtc-signaling-demo.appspot.com",
-  messagingSenderId: "1234567890",
-  appId: "1:1234567890:web:1234567890abcdef"
-};
-
-// 初始化 Firebase
-firebase.initializeApp(firebaseConfig);
-const database = firebase.database();
-
-// WebRTC 變數
-let localStream;
-let peerConnection;
-let roomName;
-let currentRoomRef;
-let roomExists = false;
-let isInitiator = false;
-let iceConnectionTimeout;
-const ICE_TIMEOUT = 15000; // 15 秒連線超時
-
-// 初始化 WebRTC 連接
-function initializePeerConnection() {
-  // 配置多個 STUN/TURN 伺服器以提高連線成功率
-  peerConnection = new RTCPeerConnection({
+// 設定 STUN & TURN 伺服器 (增加多個選項提高連線成功率)
+const peerConnection = new RTCPeerConnection({
     iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-      { urls: "stun:stun2.l.google.com:19302" },
-      { urls: "stun:stun3.l.google.com:19302" },
-      { urls: "stun:stun4.l.google.com:19302" },
-      {
-        urls: "turn:turn.anyfirewall.com:443?transport=tcp",
-        username: "webrtc",
-        credential: "webrtc"
-      },
-      {
-        urls: "turn:openrelay.metered.ca:80",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      },
-      {
-        urls: "turn:openrelay.metered.ca:443",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      },
-      {
-        urls: "turn:openrelay.metered.ca:443?transport=tcp",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      },
-      {
-        urls: "turn:openrelay.metered.ca:80?transport=tcp",
-        username: "openrelayproject",
-        credential: "openrelayproject"
-      }
+        // Google 的公共 STUN 伺服器
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" },
+        { urls: "stun:stun3.l.google.com:19302" },
+        { urls: "stun:stun4.l.google.com:19302" },
+        
+        // TURN 伺服器選項
+        {
+            urls: "turn:turn.anyfirewall.com:443?transport=tcp",
+            username: "webrtc",
+            credential: "webrtc"
+        },
+        {
+            urls: "turn:openrelay.metered.ca:80",
+            username: "openrelayproject",
+            credential: "openrelayproject"
+        },
+        {
+            urls: "turn:openrelay.metered.ca:443",
+            username: "openrelayproject",
+            credential: "openrelayproject"
+        },
+        {
+            urls: "turn:openrelay.metered.ca:443?transport=tcp",
+            username: "openrelayproject",
+            credential: "openrelayproject"
+        }
     ],
     iceCandidatePoolSize: 10
-  });
+});
 
-  // 監聽 ICE 候選
-  peerConnection.onicecandidate = event => {
-    if (event.candidate) {
-      // 發送 ICE 候選到 Firebase
-      const candidateRef = database.ref(`rooms/${roomName}/candidates/${isInitiator ? 'caller' : 'callee'}`).push();
-      candidateRef.set(event.candidate.toJSON());
-      
-      updateStatus(`發送 ICE 候選: ${event.candidate.candidate.split(' ')[7]}`);
-    } else {
-      updateStatus('ICE 候選收集完成');
+let localStream;
+let roomName = null;
+let isInitiator = false;
+let iceConnectionTimeout;
+const ICE_TIMEOUT = 15000; // 15 秒
+
+// 初始禁用按鈕
+startCallButton.disabled = true;
+endCallButton.disabled = true;
+
+// 顯示連線狀態
+function updateConnectionStatus(status) {
+    statusDiv.style.display = 'block';
+    connectionStatus.textContent = status;
+    console.log('連線狀態:', status);
+}
+
+// 獲取用戶媒體（攝像頭和麥克風）
+async function setupLocalMedia() {
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        localVideo.srcObject = localStream;
+        
+        // 將本地媒體流添加到 peer connection
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        console.log('本地媒體流已添加');
+        
+        joinRoomButton.disabled = false;
+    } catch (error) {
+        console.error('無法訪問攝像頭和麥克風:', error);
+        alert('無法訪問攝像頭和麥克風。請確保您已授予權限並且設備正常工作。');
     }
-  };
+}
 
-  // 監聽 ICE 連線狀態變化
-  peerConnection.oniceconnectionstatechange = () => {
-    updateStatus(`ICE 連線狀態: ${peerConnection.iceConnectionState}`);
+// 設置 WebSocket 連接
+let signalingSocket;
+
+function connectSignalingServer() {
+    // 使用您的 Glitch 伺服器
+    signalingSocket = new WebSocket('wss://aluminum-tremendous-archaeology.glitch.me/');
+    
+    signalingSocket.onopen = () => {
+        console.log('WebSocket 連接已建立');
+        updateConnectionStatus('已連接到信令伺服器');
+    };
+    
+    signalingSocket.onerror = error => {
+        console.error('WebSocket 錯誤:', error);
+        updateConnectionStatus('信令伺服器連接錯誤');
+    };
+    
+    signalingSocket.onclose = () => {
+        console.log('WebSocket 連接已關閉');
+        updateConnectionStatus('與信令伺服器的連接已關閉');
+    };
+    
+    signalingSocket.onmessage = async event => {
+        try {
+            let data;
+            
+            // 處理不同類型的消息數據
+            if (event.data instanceof Blob) {
+                const text = await event.data.text();
+                data = JSON.parse(text);
+            } else if (typeof event.data === 'string') {
+                data = JSON.parse(event.data);
+            } else {
+                console.error('意外的 WebSocket 消息格式:', event.data);
+                return;
+            }
+            
+            console.log('收到 WebSocket 消息:', data);
+            
+            // 處理 WebRTC 信令消息
+            if (data.type === 'join' && data.room === roomName) {
+                console.log('有新用戶加入房間');
+                if (isInitiator) {
+                    startCallButton.disabled = false;
+                }
+            } else if (data.type === 'offer' && data.room === roomName) {
+                console.log('收到 offer');
+                updateConnectionStatus('收到通話請求...');
+                
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                
+                signalingSocket.send(JSON.stringify({
+                    type: 'answer',
+                    answer: answer,
+                    room: roomName
+                }));
+                
+                updateConnectionStatus('已回應通話請求');
+            } else if (data.type === 'answer' && data.room === roomName) {
+                console.log('收到 answer');
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+                updateConnectionStatus('對方已接受通話');
+            } else if (data.type === 'candidate' && data.room === roomName) {
+                console.log('收到 ICE candidate');
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+                } catch (e) {
+                    console.error('添加 ICE candidate 失敗:', e);
+                }
+            }
+        } catch (error) {
+            console.error('處理 WebSocket 消息失敗:', error);
+        }
+    };
+}
+
+// 監聽 ICE 連接狀態變化
+peerConnection.oniceconnectionstatechange = () => {
+    console.log('ICE 連接狀態:', peerConnection.iceConnectionState);
+    updateConnectionStatus('ICE 狀態: ' + peerConnection.iceConnectionState);
     
     if (peerConnection.iceConnectionState === 'checking') {
-      // 開始計時
-      clearTimeout(iceConnectionTimeout);
-      iceConnectionTimeout = setTimeout(() => {
-        if (peerConnection.iceConnectionState === 'checking' || peerConnection.iceConnectionState === 'new') {
-          updateStatus('連線逾時，嘗試使用 TCP 連線...', true);
-          // 嘗試重啟 ICE
-          if (isInitiator) {
-            createAndSendOffer(true);
-          }
-        }
-      }, ICE_TIMEOUT);
+        // 開始計時
+        clearTimeout(iceConnectionTimeout);
+        iceConnectionTimeout = setTimeout(() => {
+            if (peerConnection.iceConnectionState === 'checking') {
+                updateConnectionStatus('連接逾時，嘗試使用 TURN 伺服器...');
+                // 可以在這裡實現重試邏輯
+            }
+        }, ICE_TIMEOUT);
     } else if (peerConnection.iceConnectionState === 'connected' || 
                peerConnection.iceConnectionState === 'completed') {
-      clearTimeout(iceConnectionTimeout);
-      updateStatus('連線成功！可以開始視訊通話');
-    } else if (peerConnection.iceConnectionState === 'failed' || 
-               peerConnection.iceConnectionState === 'disconnected' || 
-               peerConnection.iceConnectionState === 'closed') {
-      updateStatus('連線失敗或中斷。請確認網路設定或重新連線。', true);
+        clearTimeout(iceConnectionTimeout);
+        updateConnectionStatus('已成功建立連接');
+    } else if (peerConnection.iceConnectionState === 'failed') {
+        updateConnectionStatus('連接失敗，請嘗試重新連接');
+    } else if (peerConnection.iceConnectionState === 'disconnected') {
+        updateConnectionStatus('連接已斷開');
     }
-  };
+};
 
-  // 監聽遠端媒體流
-  peerConnection.ontrack = event => {
-    updateStatus('收到遠端視訊流');
+// 當有 ICE 候選時發送給對方
+peerConnection.onicecandidate = event => {
+    if (event.candidate) {
+        console.log('發送 ICE candidate');
+        signalingSocket.send(JSON.stringify({
+            type: 'candidate',
+            candidate: event.candidate,
+            room: roomName
+        }));
+    }
+};
+
+// 當有遠端流時顯示
+peerConnection.ontrack = event => {
+    console.log('收到遠端媒體流:', event.streams[0]);
     remoteVideo.srcObject = event.streams[0];
-  };
-
-  // 添加本地媒體流到連接
-  if (localStream) {
-    localStream.getTracks().forEach(track => {
-      peerConnection.addTrack(track, localStream);
-    });
-    updateStatus('已添加本地視訊流到連接');
-  }
-}
-
-// 更新狀態顯示
-function updateStatus(message, isError = false) {
-  console.log(message);
-  const statusElement = document.createElement('div');
-  statusElement.textContent = message;
-  if (isError) {
-    statusElement.className = 'error';
-  }
-  iceStatus.prepend(statusElement);
-  
-  // 限制顯示的狀態數量
-  while (iceStatus.children.length > 5) {
-    iceStatus.removeChild(iceStatus.lastChild);
-  }
-}
-
-// 獲取用戶媒體
-async function getLocalMedia() {
-  try {
-    const constraints = { 
-      video: { 
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      }, 
-      audio: true 
-    };
-    
-    localStream = await navigator.mediaDevices.getUserMedia(constraints);
-    localVideo.srcObject = localStream;
-    updateStatus('成功獲取本地視訊');
-    joinRoomButton.disabled = false;
-    
-    return true;
-  } catch (error) {
-    console.error('無法獲取媒體設備:', error);
-    updateStatus(`無法獲取攝影機或麥克風: ${error.message}`, true);
-    return false;
-  }
-}
-
-// 創建並發送 Offer
-async function createAndSendOffer(iceRestart = false) {
-  try {
-    const offerOptions = {
-      offerToReceiveAudio: true,
-      offerToReceiveVideo: true
-    };
-    
-    if (iceRestart) {
-      offerOptions.iceRestart = true;
-    }
-    
-    const offer = await peerConnection.createOffer(offerOptions);
-    await peerConnection.setLocalDescription(offer);
-    
-    // 發送 offer 到 Firebase
-    await database.ref(`rooms/${roomName}/offer`).set({
-      type: offer.type,
-      sdp: offer.sdp
-    });
-    
-    updateStatus('已發送通話邀請');
-  } catch (error) {
-    console.error('創建 offer 失敗:', error);
-    updateStatus(`創建通話邀請失敗: ${error.message}`, true);
-  }
-}
-
-// 創建並發送 Answer
-async function createAndSendAnswer() {
-  try {
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    
-    // 發送 answer 到 Firebase
-    await database.ref(`rooms/${roomName}/answer`).set({
-      type: answer.type,
-      sdp: answer.sdp
-    });
-    
-    updateStatus('已接受通話邀請');
-  } catch (error) {
-    console.error('創建 answer 失敗:', error);
-    updateStatus(`接受通話邀請失敗: ${error.message}`, true);
-  }
-}
+};
 
 // 加入房間
-async function joinRoom() {
-  roomName = roomInput.value.trim();
-  if (!roomName) {
-    alert('請輸入房間名稱');
-    return;
-  }
-  
-  // 檢查房間是否已存在
-  const roomRef = database.ref(`rooms/${roomName}`);
-  const snapshot = await roomRef.once('value');
-  roomExists = snapshot.exists();
-  
-  // 初始化連接
-  initializePeerConnection();
-  
-  if (roomExists) {
-    updateStatus(`加入房間: ${roomName}`);
-    isInitiator = false;
+joinRoomButton.onclick = () => {
+    roomName = roomInput.value.trim();
     
-    // 監聽 offer
-    database.ref(`rooms/${roomName}/offer`).on('value', async snapshot => {
-      const offer = snapshot.val();
-      if (offer && !peerConnection.currentRemoteDescription) {
-        updateStatus('收到通話邀請');
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-        await createAndSendAnswer();
-      }
-    });
-  } else {
-    updateStatus(`創建新房間: ${roomName}`);
+    if (!roomName) {
+        alert('請輸入房間名稱');
+        return;
+    }
+    
+    if (!signalingSocket || signalingSocket.readyState !== WebSocket.OPEN) {
+        alert('正在連接信令伺服器，請稍候...');
+        connectSignalingServer();
+        setTimeout(() => joinRoom(), 1000);
+        return;
+    }
+    
+    joinRoom();
+};
+
+function joinRoom() {
+    if (!signalingSocket || signalingSocket.readyState !== WebSocket.OPEN) {
+        alert('信令伺服器未連接');
+        return;
+    }
+    
+    signalingSocket.send(JSON.stringify({
+        type: 'join',
+        room: roomName
+    }));
+    
+    console.log(`已加入房間: ${roomName}`);
+    updateConnectionStatus(`已加入房間: ${roomName}`);
+    
+    joinRoomButton.disabled = true;
+    roomInput.disabled = true;
+    startCallButton.disabled = false;
     isInitiator = true;
-    startCallButton.disabled = false;
-  }
-  
-  // 監聽 answer
-  database.ref(`rooms/${roomName}/answer`).on('value', async snapshot => {
-    const answer = snapshot.val();
-    if (answer && peerConnection.signalingState !== 'stable') {
-      updateStatus('收到對方接受通話');
-      await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
-    }
-  });
-  
-  // 監聽 ICE 候選
-  const candidatesRef = isInitiator ? 
-    database.ref(`rooms/${roomName}/candidates/callee`) : 
-    database.ref(`rooms/${roomName}/candidates/caller`);
-  
-  candidatesRef.on('child_added', async snapshot => {
-    const candidate = snapshot.val();
-    if (candidate) {
-      try {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
-        updateStatus('添加對方 ICE 候選');
-      } catch (error) {
-        console.error('添加 ICE 候選失敗:', error);
-      }
-    }
-  });
-  
-  // 設置房間清理
-  database.ref(`rooms/${roomName}`).onDisconnect().remove();
-  
-  // 更新 UI
-  joinRoomButton.disabled = true;
-  roomInput.disabled = true;
-  if (isInitiator) {
-    startCallButton.disabled = false;
-  } else {
-    startCallButton.disabled = true;
-    endCallButton.disabled = false;
-  }
-  
-  connectionStatus.textContent = `連線狀態: 已${isInitiator ? '創建' : '加入'}房間 ${roomName}`;
 }
 
 // 開始通話
-function startCall() {
-  createAndSendOffer();
-  startCallButton.disabled = true;
-  endCallButton.disabled = false;
-}
+startCallButton.onclick = async () => {
+    try {
+        console.log('開始通話');
+        updateConnectionStatus('正在發起通話...');
+        
+        // 創建 offer
+        const offerOptions = {
+            offerToReceiveAudio: true,
+            offerToReceiveVideo: true,
+            iceRestart: true
+        };
+        
+        const offer = await peerConnection.createOffer(offerOptions);
+        await peerConnection.setLocalDescription(offer);
+        
+        signalingSocket.send(JSON.stringify({
+            type: 'offer',
+            offer: offer,
+            room: roomName
+        }));
+        
+        startCallButton.disabled = true;
+        endCallButton.disabled = false;
+    } catch (error) {
+        console.error('發起通話失敗:', error);
+        alert('發起通話失敗: ' + error.message);
+    }
+};
 
 // 結束通話
-function endCall() {
-  if (peerConnection) {
+endCallButton.onclick = () => {
+    console.log('結束通話');
+    
+    // 關閉連接
     peerConnection.close();
-  }
-  
-  if (roomName) {
-    database.ref(`rooms/${roomName}`).remove();
-  }
-  
-  // 重置 UI
-  remoteVideo.srcObject = null;
-  startCallButton.disabled = true;
-  endCallButton.disabled = true;
-  joinRoomButton.disabled = false;
-  roomInput.disabled = false;
-  
-  // 重置狀態
-  connectionStatus.textContent = '連線狀態: 通話已結束';
-  updateStatus('通話已結束');
-  
-  // 釋放資源
-  if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-  }
-  
-  // 重新獲取媒體
-  getLocalMedia();
+    
+    // 停止所有媒體軌道
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+    
+    // 清除視頻
+    remoteVideo.srcObject = null;
+    
+    // 重置 UI
+    startCallButton.disabled = false;
+    endCallButton.disabled = true;
+    updateConnectionStatus('通話已結束');
+    
+    // 重新設置 peer connection
+    setupPeerConnection();
+};
+
+// 重新設置 peer connection
+function setupPeerConnection() {
+    // 創建新的 peer connection
+    peerConnection.close();
+    
+    // 重新配置 STUN & TURN 伺服器
+    const newPeerConnection = new RTCPeerConnection({
+        iceServers: [
+            { urls: "stun:stun.l.google.com:19302" },
+            { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" },
+            { urls: "stun:stun3.l.google.com:19302" },
+            { urls: "stun:stun4.l.google.com:19302" },
+            {
+                urls: "turn:turn.anyfirewall.com:443?transport=tcp",
+                username: "webrtc",
+                credential: "webrtc"
+            },
+            {
+                urls: "turn:openrelay.metered.ca:80",
+                username: "openrelayproject",
+                credential: "openrelayproject"
+            },
+            {
+                urls: "turn:openrelay.metered.ca:443",
+                username: "openrelayproject",
+                credential: "openrelayproject"
+            },
+            {
+                urls: "turn:openrelay.metered.ca:443?transport=tcp",
+                username: "openrelayproject",
+                credential: "openrelayproject"
+            }
+        ],
+        iceCandidatePoolSize: 10
+    });
+    
+    // 重新綁定事件處理程序
+    newPeerConnection.onicecandidate = peerConnection.onicecandidate;
+    newPeerConnection.ontrack = peerConnection.ontrack;
+    newPeerConnection.oniceconnectionstatechange = peerConnection.oniceconnectionstatechange;
+    
+    // 替換舊的連接
+    peerConnection = newPeerConnection;
+    
+    // 重新添加本地媒體流
+    if (localStream) {
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+    }
 }
 
 // 初始化
-async function initialize() {
-  // 禁用按鈕直到媒體準備好
-  joinRoomButton.disabled = true;
-  startCallButton.disabled = true;
-  endCallButton.disabled = true;
-  
-  // 獲取本地媒體
-  await getLocalMedia();
-  
-  // 設置按鈕事件
-  joinRoomButton.addEventListener('click', joinRoom);
-  startCallButton.addEventListener('click', startCall);
-  endCallButton.addEventListener('click', endCall);
-}
-
-// 啟動應用
-initialize();
+window.onload = () => {
+    setupLocalMedia();
+    connectSignalingServer();
+    statusDiv.style.display = 'block';
+};
 
 // 處理頁面關閉
-window.addEventListener('beforeunload', () => {
-  if (roomName) {
-    database.ref(`rooms/${roomName}`).remove();
-  }
-});
+window.onbeforeunload = () => {
+    if (localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+    if (peerConnection) {
+        peerConnection.close();
+    }
+    if (signalingSocket) {
+        signalingSocket.close();
+    }
+};
