@@ -12,7 +12,7 @@ class ConnectionManager {
       
       // WebSocket 連接
       this.signalingSocket = null;
-      this.signalingUrl = 'wss://your-signaling-server.com/ws'; // 替換為您的信令服務器地址
+      this.signalingUrl = 'wss://aluminum-tremendous-archaeology.glitch.me'; // 替換為您的信令服務器地址
       
       // WebTransport 連接
       this.webTransports = new Map(); // userId -> WebTransport
