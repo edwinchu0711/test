@@ -182,15 +182,22 @@ class ConnectionManager {
       }
       
       // 新增處理加入房間的方法
+      
       handleJoinRoom(roomId, userId, displayName, supportWebTransport) {
         console.log(`用戶 ${displayName} (${userId}) 請求加入房間 ${roomId}`);
         
         // 加入房間的邏輯
         this.currentRoomId = roomId;
+        this.currentUserId = userId;
+        this.displayName = displayName;
         
-        // 如果支持 WebTransport，可以進行相關設置
-        if (supportWebTransport) {
-          this.initializeWebTransport();
+        // 如果支持 WebTransport，嘗試初始化
+        if (supportWebTransport && typeof this.initializeWebTransport === 'function') {
+          try {
+            this.initializeWebTransport();
+          } catch (error) {
+            console.warn('WebTransport 初始化失敗，將使用標準 WebRTC 數據通道:', error);
+          }
         }
         
         // 通知其他用戶有新用戶加入
@@ -877,5 +884,135 @@ class ConnectionManager {
     }
     
     console.log(`本地視頻已${isVideoOff ? '關閉' : '開啟'}`);
+  }
+  initializeWebTransport() {
+    console.log('初始化 WebTransport 連接');
+    
+    if (!window.WebTransport) {
+      console.warn('此瀏覽器不支持 WebTransport API');
+      return;
+    }
+    
+    try {
+      // 使用安全連接 (HTTPS/WSS)
+      const serverUrl = `https://${window.location.hostname}:${window.location.port}/webtransport`;
+      
+      // 創建 WebTransport 實例
+      this.webTransport = new WebTransport(serverUrl);
+      
+      // 處理連接狀態
+      this.webTransport.ready
+        .then(() => {
+          console.log('WebTransport 連接已建立');
+          this.setupWebTransportStreams();
+        })
+        .catch((error) => {
+          console.error('WebTransport 連接失敗:', error);
+        });
+        
+      // 監聽連接關閉
+      this.webTransport.closed
+        .then(() => {
+          console.log('WebTransport 連接已關閉');
+        })
+        .catch((error) => {
+          console.error('WebTransport 連接異常關閉:', error);
+        });
+    } catch (error) {
+      console.error('初始化 WebTransport 時發生錯誤:', error);
+    }
+  }
+  
+  // 設置 WebTransport 數據流
+  setupWebTransportStreams() {
+    // 創建雙向數據流
+    this.createBidirectionalStream();
+    
+    // 監聽傳入的單向數據流
+    this.acceptUnidirectionalStreams();
+    
+    // 監聽傳入的雙向數據流
+    this.acceptBidirectionalStreams();
+  }
+  
+  // 創建雙向數據流
+  async createBidirectionalStream() {
+    try {
+      const stream = await this.webTransport.createBidirectionalStream();
+      const writer = stream.writable.getWriter();
+      const reader = stream.readable.getReader();
+      
+      console.log('已創建雙向數據流');
+      
+      // 存儲 writer 和 reader 以便後續使用
+      this.bidirectionalWriter = writer;
+      
+      // 讀取來自服務器的數據
+      this.readFromStream(reader);
+    } catch (error) {
+      console.error('創建雙向數據流失敗:', error);
+    }
+  }
+  
+  // 監聽傳入的單向數據流
+  async acceptUnidirectionalStreams() {
+    try {
+      const reader = this.webTransport.incomingUnidirectionalStreams.getReader();
+      
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        // 處理傳入的單向數據流
+        this.readFromStream(value.getReader());
+      }
+    } catch (error) {
+      console.error('處理傳入單向數據流時出錯:', error);
+    }
+  }
+  
+  // 監聽傳入的雙向數據流
+  async acceptBidirectionalStreams() {
+    try {
+      const reader = this.webTransport.incomingBidirectionalStreams.getReader();
+      
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        // 處理傳入的雙向數據流
+        this.readFromStream(value.readable.getReader());
+        
+        // 可以向傳入的雙向數據流寫入數據
+        const writer = value.writable.getWriter();
+        // 存儲 writer 以便後續使用
+      }
+    } catch (error) {
+      console.error('處理傳入雙向數據流時出錯:', error);
+    }
+  }
+  
+  // 從數據流中讀取數據
+  async readFromStream(reader) {
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        // 解析並處理接收到的數據
+        const decoder = new TextDecoder();
+        const message = decoder.decode(value);
+        console.log('從 WebTransport 接收到數據:', message);
+        
+        try {
+          const data = JSON.parse(message);
+          this.processSignalingMessage(data);
+        } catch (error) {
+          console.error('解析 WebTransport 消息失敗:', error);
+        }
+      }
+    } catch (error) {
+      console.error('從數據流讀取時出錯:', error);
+    }
   }
 }
