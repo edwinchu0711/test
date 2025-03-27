@@ -34,37 +34,22 @@ navigator.mediaDevices.getUserMedia({ video: true, audio: true })
 const signalingSocket = new WebSocket('wss://aluminum-tremendous-archaeology.glitch.me/');
 
 signalingSocket.onopen = () => {
-    console.log('WebSocket connection established');
-    const message = JSON.stringify({ type: 'join', room: 'room1' });
-    signalingSocket.send(message);
+  console.log('WebSocket connection established');
+  joinRoomButton.disabled = false; // Enable join button when WebSocket is ready
 };
 
-
-signalingSocket.onerror = (error) => {
-    console.error('WebSocket error:', error);
+signalingSocket.onerror = error => {
+  console.error('WebSocket error:', error);
 };
 
 signalingSocket.onclose = () => {
-    console.log('WebSocket connection closed');
+  console.log('WebSocket connection closed');
+  alert('WebSocket connection lost. Please refresh the page.');
 };
 
-signalingSocket.onmessage = async (event) => {
-    console.log('Received data type:', typeof event.data);
-
-    if (typeof event.data === 'string') {
-        try {
-            const parsedData = JSON.parse(event.data);
-            console.log('Parsed JSON:', parsedData);
-        } catch (error) {
-            console.error('Error parsing JSON:', error);
-        }
-    } else if (event.data instanceof Blob) {
-        const text = await event.data.text();
-        console.log('Blob received and converted to text:', text);
-    } else {
-        console.warn('Unhandled data type:', event.data);
-    }
-};
+signalingSocket.onmessage = async message => {
+  console.log('Received message:', message.data);
+  const data = JSON.parse(message.data);
 
   if (data.type === 'offer') {
     console.log('Received offer');
