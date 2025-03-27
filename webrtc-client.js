@@ -9,6 +9,12 @@ const roomInput = document.getElementById('roomInput');
 //   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 // });
 
+const io = require("socket.io")(3001, {
+    cors: {
+        origin: "https://edwinchu0711.github.io", // 允許你的前端來源
+        methods: ["GET", "POST"]
+    }
+});
 
 const socket = io("https://aluminum-tremendous-archaeology.glitch.me");
 
