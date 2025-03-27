@@ -122,9 +122,32 @@ class ConnectionManager {
      * @param {string} data - 消息數據
      */
     handleSignalingMessage(data) {
-      try {
-        const message = JSON.parse(data);
-        
+        try {
+          // 檢查消息類型
+          if (data instanceof Blob) {
+            // 如果是 Blob，先轉換為文本
+            const reader = new FileReader();
+            reader.onload = () => {
+              try {
+                const message = JSON.parse(reader.result);
+                this.processSignalingMessage(message);
+              } catch (error) {
+                console.error('解析信令消息失敗:', error);
+              }
+            };
+            reader.readAsText(data);
+          } else {
+            // 如果已經是文本或其他格式
+            const message = JSON.parse(data);
+            this.processSignalingMessage(message);
+          }
+        } catch (error) {
+          console.error('處理信令消息時出錯:', error);
+        }
+      }
+      
+      // 新增處理消息的方法，保留原有的業務邏輯
+      processSignalingMessage(message) {
         switch (message.type) {
           case 'user-joined':
             this.handleUserJoined(message.userId, message.displayName);
@@ -153,10 +176,7 @@ class ConnectionManager {
           default:
             console.warn('收到未知類型的信令消息:', message);
         }
-      } catch (error) {
-        console.error('處理信令消息時出錯:', error);
       }
-    }
     
     /**
      * 發送信令消息

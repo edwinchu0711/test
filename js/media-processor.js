@@ -27,9 +27,9 @@ class MediaProcessor {
       // 音頻編碼器配置
       this.audioEncoderConfig = {
         codec: 'opus',
-        sampleRate: 48000,
-        numberOfChannels: 2,
-        bitrate: 128000 // 128 kbps
+        sampleRate: 44100, // 更常見的採樣率
+        numberOfChannels: 1, // 單聲道更可能被廣泛支持
+        bitrate: 64000 // 降低比特率
       };
       
       // 編碼器
@@ -109,41 +109,45 @@ class MediaProcessor {
      * @param {MediaStream} stream - 本地媒體流
      */
     processLocalStream(stream) {
-      if (!this.initialized) {
-        console.warn('媒體處理器尚未初始化');
-        return;
-      }
-      
-      try {
-        // 獲取視頻軌道
-        const videoTrack = stream.getVideoTracks()[0];
-        if (videoTrack) {
-          // 創建視頻軌道處理器
-          this.videoTrackProcessor = new MediaStreamTrackProcessor({ track: videoTrack });
-          
-          // 處理視頻幀
-          const videoReader = this.videoTrackProcessor.readable.getReader();
-          this.processVideoFrames(videoReader);
-          
-          console.log('開始處理本地視頻流');
+        if (!this.initialized) {
+          console.warn('媒體處理器尚未初始化');
+          return;
         }
         
-        // 獲取音頻軌道
-        const audioTrack = stream.getAudioTracks()[0];
-        if (audioTrack) {
-          // 創建音頻軌道處理器
-          this.audioTrackProcessor = new MediaStreamTrackProcessor({ track: audioTrack });
+        try {
+          // 獲取音頻軌道
+          const audioTrack = stream.getAudioTracks()[0];
+          if (audioTrack) {
+            // 創建音頻軌道處理器
+            this.audioTrackProcessor = new MediaStreamTrackProcessor({ track: audioTrack });
+            
+            // 獲取音頻軌道的實際參數
+            const audioSettings = audioTrack.getSettings();
+            
+            // 根據實際參數重新配置音頻編碼器
+            this.audioEncoderConfig = {
+              codec: 'opus',
+              sampleRate: audioSettings.sampleRate || 48000,
+              numberOfChannels: audioSettings.channelCount || 1,
+              bitrate: 128000
+            };
+            
+            // 重新配置音頻編碼器
+            this.audioEncoder.configure(this.audioEncoderConfig);
+            
+            // 處理音頻幀
+            const audioReader = this.audioTrackProcessor.readable.getReader();
+            this.processAudioFrames(audioReader);
+            
+            console.log('開始處理本地音頻流', this.audioEncoderConfig);
+          }
           
-          // 處理音頻幀
-          const audioReader = this.audioTrackProcessor.readable.getReader();
-          this.processAudioFrames(audioReader);
-          
-          console.log('開始處理本地音頻流');
+          // 視頻處理代碼...
+        } catch (error) {
+          console.error('處理本地媒體流失敗:', error);
         }
-      } catch (error) {
-        console.error('處理本地媒體流失敗:', error);
       }
-    }
+      
     
     /**
      * 處理視頻幀
