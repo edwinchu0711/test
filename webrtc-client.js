@@ -48,21 +48,32 @@ signalingSocket.onclose = () => {
 };
 
 signalingSocket.onmessage = async message => {
-  console.log('Received message:', message.data);
-  const data = JSON.parse(message.data);
+  if (message.data instanceof Blob) {
+    // 轉換 Blob 為文字
+    const text = await message.data.text();
+    message.data = text; // 更新 message.data，這樣後續 JSON.parse() 才不會報錯
+  }
 
-  if (data.type === 'offer') {
-    console.log('Received offer');
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    signalingSocket.send(JSON.stringify({ type: 'answer', answer, room: roomName }));
-  } else if (data.type === 'answer') {
-    console.log('Received answer');
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-  } else if (data.type === 'candidate') {
-    console.log('Received ICE candidate');
-    await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+  console.log('Received message:', message.data);
+  
+  try {
+    const data = JSON.parse(message.data);
+
+    if (data.type === 'offer') {
+      console.log('Received offer');
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      signalingSocket.send(JSON.stringify({ type: 'answer', answer, room: roomName }));
+    } else if (data.type === 'answer') {
+      console.log('Received answer');
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+    } else if (data.type === 'candidate') {
+      console.log('Received ICE candidate');
+      await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+    }
+  } catch (error) {
+    console.error('Failed to parse WebSocket message:', error);
   }
 };
 
