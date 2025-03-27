@@ -9,10 +9,10 @@ const roomInput = document.getElementById('roomInput');
 //   iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
 // });
 
-import { createServer } from "http";
-import { Server } from "socket.io";
+// import { createServer } from "http";
+// import { Server } from "socket.io";
 
-const socket = io("https://aluminum-tremendous-archaeology.glitch.me");
+// const socket = io("https://aluminum-tremendous-archaeology.glitch.me");
 
 // 設定 STUN & TURN 伺服器
 const peerConnection = new RTCPeerConnection({
