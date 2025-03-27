@@ -32,10 +32,12 @@
     button#startCall {
       background-color: #4CAF50;
       color: white;
+      cursor: not-allowed;
     }
     button#endCall {
       background-color: #f44336;
       color: white;
+      cursor: not-allowed;
     }
     input#roomInput {
       width: 200px;
@@ -56,6 +58,29 @@
     <button id="startCall" disabled>Start Call</button>
     <button id="endCall" disabled>End Call</button>
   </div>
+  
+  <script>
+    document.getElementById('joinRoom').addEventListener('click', () => {
+      const roomName = document.getElementById('roomInput').value.trim();
+      if (roomName === '') {
+        alert('Please enter a room name');
+        return;
+      }
+      document.getElementById('startCall').disabled = false;
+      document.getElementById('startCall').style.cursor = 'pointer';
+    });
+
+    document.getElementById('startCall').addEventListener('click', () => {
+      document.getElementById('endCall').disabled = false;
+      document.getElementById('endCall').style.cursor = 'pointer';
+    });
+
+    document.getElementById('endCall').addEventListener('click', () => {
+      document.getElementById('endCall').disabled = true;
+      document.getElementById('endCall').style.cursor = 'not-allowed';
+    });
+  </script>
+
   <script src="webrtc-client.js"></script>
 </body>
 </html>
