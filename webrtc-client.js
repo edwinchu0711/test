@@ -17,6 +17,7 @@ const peerConnection = new RTCPeerConnection({
         { urls: "stun:stun2.l.google.com:19302" },
         { urls: "stun:stun3.l.google.com:19302" },
         { urls: "stun:stun4.l.google.com:19302" },
+        { urls: "stun.voipgain.com:3478" },
         
         // TURN 伺服器選項
         {
