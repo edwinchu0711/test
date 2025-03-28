@@ -23,7 +23,7 @@ const peerConnection = new RTCPeerConnection({
         { urls: "stun:stun.ekiga.net:3478" },
         { urls: "stun:stun.ideasip.com:3478" },
         { urls: "stun:stun.voiparound.com:3478" },
-        { urls: "stun:stun.services.mozilla.com"}
+        { urls: "stun:stun.services.mozilla.com" },
 
         // TURN 伺服器
         {
@@ -47,7 +47,7 @@ const peerConnection = new RTCPeerConnection({
             credential: "homeo"
         }
     ],
-    iceCandidatePoolSize: 20
+    iceCandidatePoolSize: 30
 });
 
 
