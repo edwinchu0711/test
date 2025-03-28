@@ -23,6 +23,7 @@ const peerConnection = new RTCPeerConnection({
         { urls: "stun:stun.ekiga.net:3478" },
         { urls: "stun:stun.ideasip.com:3478" },
         { urls: "stun:stun.voiparound.com:3478" },
+        { urls: "stun:stun.services.mozilla.com"}
 
         // TURN 伺服器
         {
