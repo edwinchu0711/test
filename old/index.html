@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebRTC 視訊通話</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background-color: #f4f4f9;
+    }
+    .video-container {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    video {
+      width: 45%;
+      margin: 10px;
+      border-radius: 8px;
+      border: 2px solid #ddd;
+      background-color: #000;
+    }
+    #controls {
+      margin: 20px 0;
+    }
+    button, input {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    button#joinRoom {
+      background-color: #2196F3;
+      color: white;
+    }
+    button#startCall {
+      background-color: #4CAF50;
+      color: white;
+    }
+    button#endCall {
+      background-color: #f44336;
+      color: white;
+    }
+    input#roomInput {
+      width: 200px;
+      font-size: 16px;
+      text-align: center;
+    }
+    #status {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 5px;
+      background-color: #e0e0e0;
+      display: none;
+    }
+    #connectionStatus {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>WebRTC 視訊通話</h1>
+  
+  <div id="status">
+    連線狀態: <span id="connectionStatus">未連線</span>
+  </div>
+  
+  <div class="video-container">
+    <video id="localVideo" autoplay muted playsinline></video>
+    <video id="remoteVideo" autoplay playsinline></video>
+  </div>
+  
+  <div id="controls">
+    <input type="text" id="roomInput" placeholder="請輸入房間名稱">
+    <button id="joinRoom">加入房間</button>
+    <button id="startCall" disabled>開始通話</button>
+    <button id="endCall" disabled>結束通話</button>
+  </div>
+  
+  <script src="webrtc-client.js"></script>
+</body>
+</html>
