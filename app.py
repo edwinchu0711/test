@@ -5,6 +5,8 @@ import tensorflow as tf
 from flask import Flask, request, jsonify
 from tensorflow.keras.models import load_model
 
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"  # 禁用 GPU，避免 cuDNN、cuBLAS、cuFFT 錯誤
+
 # 定義字符集
 CHARACTERS = '0123456789'
 char_to_idx = {char: idx for idx, char in enumerate(CHARACTERS)}
@@ -51,4 +53,6 @@ def predict():
     return jsonify({"captcha": result[0]})
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    port = int(os.environ.get("PORT", 10000))  
+    app.run(host="0.0.0.0", port=port)
+
