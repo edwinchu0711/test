@@ -35,7 +35,9 @@ def preprocess_image(image_path):
 model_path = 'model.keras'  # Railway 會用這個模型
 if not os.path.exists(model_path):
     raise FileNotFoundError(f"模型文件 {model_path} 未找到，請確保模型已保存。")
+model_path = os.path.join(os.path.dirname(__file__), "model.keras")
 model = load_model(model_path)
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
